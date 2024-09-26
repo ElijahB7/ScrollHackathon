@@ -1,86 +1,79 @@
-pragma solidity 0.8.26;
+pragma solidity ^0.8.26;
 
-contract FaceMash {
-    
-    struct FashionItem {
-        string name;
-        string description;
-        uint256 voteCount;
-        address owner;
+contract AdvancedMarketplace {
+
+    struct Items {
+        uint256 itemId;
+        string itemName;
+        bool saleId;
+        address seller;
+        uint256 price;  // Sale price of the item (in Wei)
     }
 
-    FashionItem[] public fashionItems;
+    uint256 public itemCounter;
 
-    mapping(uint256 => mapping(address => bool)) public hasVoted;  // Keeps track of which user has voted for which item
-    mapping(address => bool) public userSubmitted;  // Track if a user has already submitted an item
+    mapping(uint256 => Items) public itemStorage;
 
-    // Modifier to ensure the item exists
-    modifier validItem(uint256 itemId) {
-        require(itemId < fashionItems.length, "Invalid item ID");
-        _;
-    }
+    // Function to create an item
+    function createItem(uint256 _itemId, string memory _itemName) external {
+        // Check if the itemId already exists
+        require(itemStorage[_itemId].itemId == 0, "Item ID already exists");
 
-    // Modifier to ensure the user hasn't already submitted an item
-    modifier onlyOneSubmission() {
-        require(!userSubmitted[msg.sender], "You have already submitted an item");
-        _;
-    }
-
-    // Event triggered when a new item is submitted
-    event FashionItemSubmitted(uint256 itemId, string name, string description, address owner);
-
-    // Event triggered when an item is voted on
-    event VotedOnFashionItem(uint256 itemId, address voter);
-
-    // Submit a new fashion item
-    function submitItem(string memory name, string memory description) public onlyOneSubmission {
-        FashionItem memory newItem = FashionItem({
-            name: name,
-            description: description,
-            voteCount: 0,
-            owner: msg.sender
+        // Create a new item struct and save it in memory first
+        Items memory newItem = Items({
+            itemId: _itemId,
+            itemName: _itemName,
+            saleId: false,     // Initially not for sale
+            seller: msg.sender,
+            price: 0           // Price is 0 until set by the seller
         });
 
-        fashionItems.push(newItem);
-        userSubmitted[msg.sender] = true;
+        // Store the new item in the mapping
+        itemStorage[_itemId] = newItem;
 
-        emit FashionItemSubmitted(fashionItems.length - 1, name, description, msg.sender);
+        // Increment the item counter
+        itemCounter++;
     }
 
-    // Vote on a fashion item by its index
-    function voteOnItem(uint256 itemId) public validItem(itemId) {
-        require(!hasVoted[itemId][msg.sender], "You have already voted for this item");
+    // Function to allow the owner to sell an item
+    function sellItem(uint256 _itemId, uint256 _price) external {
+        // Ensure the item exists
+        require(itemStorage[_itemId].itemId != 0, "Item does not exist");
 
-        fashionItems[itemId].voteCount += 1;
-        hasVoted[itemId][msg.sender] = true;
+        // Ensure that the caller is the owner of the item
+        require(itemStorage[_itemId].seller == msg.sender, "You are not the owner");
 
-        emit VotedOnFashionItem(itemId, msg.sender);
+        // Set the item as available for sale
+        itemStorage[_itemId].saleId = true;
+
+        // Set the sale price for the item (make sure it's in Wei)
+        itemStorage[_itemId].price = _price;
     }
 
-    // Get the details of a specific fashion item by returning the entire FashionItem struct
-    function getItem(uint256 itemId) public view validItem(itemId) returns (FashionItem memory) {
-        return fashionItems[itemId];
-}
+    // Function to allow someone to buy an item
+    function buyItem(uint256 _itemId) external payable {
+        // Ensure the item exists
+        require(itemStorage[_itemId].itemId != 0, "Item does not exist");
 
+        // Ensure the item is for sale
+        require(itemStorage[_itemId].saleId == true, "Item is not for sale");
 
-    // Get the most popular item based on votes
-    function getTopVotedItem() public view returns (FashionItem memory) {
-        uint256 highestVotes = 0;
-        uint256 topItemId = 0;
+        // Ensure the buyer has sent the correct amount (in Wei)
+        require(msg.value == itemStorage[_itemId].price, "Incorrect ETH amount sent");
 
-        for (uint256 i = 0; i < fashionItems.length; i++) {
-            if (fashionItems[i].voteCount > highestVotes) {
-                highestVotes = fashionItems[i].voteCount;
-                topItemId = i;
-            }
-        }
+        // Get the seller's address
+        address seller = itemStorage[_itemId].seller;
 
-        FashionItem memory topItem = fashionItems[topItemId];
-        return fashionItems[topItemId];
-    }
+        // Transfer ownership to the buyer (msg.sender)
+        itemStorage[_itemId].seller = msg.sender;
 
-    // Get the total number of fashion items submitted
-    function getTotalItems() public view returns (uint256) {
-        return fashionItems.length;
+        // Mark the item as not for sale
+        itemStorage[_itemId].saleId = false;
+
+        // Reset the sale price
+        itemStorage[_itemId].price = 0;
+
+        // Transfer the sale price to the original seller
+        payable(seller).transfer(msg.value);
     }
 }
