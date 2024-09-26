@@ -1,4 +1,4 @@
 # ScrollHackathon
 
-I will be creating a version of FaceMash utilizing Web3 and JavaScript
+I will be creating an semi-advanced marketplace utilizing Solidity, HTML and JavaScript.
 
