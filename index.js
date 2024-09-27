@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-let yourAPIKey = "43mKUgcLH6NSL6qe1lskxFgmwQxs9N2u";
+let yourAPIKey = "ADD API KEY";
 
 const url = `https://scroll-mainnet.g.alchemy.com/v2/${yourAPIKey}`;
 
