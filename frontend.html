@@ -5,40 +5,149 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simple Marketplace</title>
     <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js@1.6.0/dist/web3.min.js"></script>
+    <style>
+        /* General Styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            color: #444;
+            font-size: 2rem;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        /* Form and Input Styling */
+        input[type="text"] {
+            width: 95%; /* Adjusted width for better fit */
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        /* Button Styling */
+        button {
+            padding: 10px 20px;
+            margin-top: 10px;
+            border: none;
+            background-color: #28a745;
+            color: white;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        /* Container Styling */
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 100%;
+            max-width: 400px; /* Ensure a max width */
+            margin: 20px auto;
+        }
+
+        /* Status Message Styling */
+        p {
+            color: #555;
+            font-size: 1rem;
+            margin-top: 5px;
+        }
+
+        /* Centering Content */
+        .center-content {
+            text-align: center;
+        }
+
+        /* Divider for sections */
+        hr {
+            border: none;
+            height: 1px;
+            background-color: #ddd;
+            margin: 20px 0;
+        }
+
+        /* Responsive Adjustments */
+        @media (max-width: 768px) {
+            .container {
+                width: 90%; /* Make containers fill more space on small screens */
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                width: 100%; /* Make containers fill full width on small screens */
+            }
+        }
+    </style>
 </head>
 <body>
 
-    <h1>Simple Marketplace</h1>
+    <h1>Decentralized Marketplace</h1>
 
-    <!-- Section to create an item -->
-    <h2>Create an Item</h2>
-    <label>Item ID:</label>
-    <input type="text" id="itemId">
-    <label>Item Name:</label>
-    <input type="text" id="itemName">
-    <button onclick="createItem()">Create Item</button>
-    <p id="createItemStatus"></p>
+    <!-- Container for Create an Item -->
+    <div class="container">
+        <h2>Create an Item</h2>
+        <label for="itemId">Item ID:</label>
+        <input type="text" id="itemId" placeholder="Enter Item ID">
+        <label for="itemName">Item Name:</label>
+        <input type="text" id="itemName" placeholder="Enter Item Name">
+        <div class="center-content">
+            <button onclick="createItem()">Create Item</button>
+        </div>
+        <p id="createItemStatus"></p>
+    </div>
 
-    <!-- Section to sell an item -->
-    <h2>Sell an Item</h2>
-    <label>Item ID:</label>
-    <input type="text" id="sellItemId">
-    <label>Price (in Ether):</label>
-    <input type="text" id="itemPrice">
-    <button onclick="sellItem()">Sell Item</button>
-    <p id="sellItemStatus"></p>
+    <hr>
 
-    <!-- Section to buy an item -->
-    <h2>Buy an Item</h2>
-    <label>Item ID:</label>
-    <input type="text" id="buyItemId">
-    <button onclick="buyItem()">Buy Item</button>
-    <p id="buyItemStatus"></p>
+    <!-- Container for Sell an Item -->
+    <div class="container">
+        <h2>Sell an Item</h2>
+        <label for="sellItemId">Item ID:</label>
+        <input type="text" id="sellItemId" placeholder="Enter Item ID">
+        <label for="itemPrice">Price (in Ether):</label>
+        <input type="text" id="itemPrice" placeholder="Enter Price in Ether">
+        <div class="center-content">
+            <button onclick="sellItem()">Sell Item</button>
+        </div>
+        <p id="sellItemStatus"></p>
+    </div>
 
-    <!-- Section to get current block number -->
-    <h2>Current Block Number</h2>
-    <button onclick="getCurrentBlockNumber()">Get Current Block Number</button>
-    <p id="blockNumberStatus"></p>
+    <hr>
+
+    <!-- Container for Buy an Item -->
+    <div class="container">
+        <h2>Buy an Item</h2>
+        <label for="buyItemId">Item ID:</label>
+        <input type="text" id="buyItemId" placeholder="Enter Item ID">
+        <div class="center-content">
+            <button onclick="buyItem()">Buy Item</button>
+        </div>
+        <p id="buyItemStatus"></p>
+    </div>
 
     <script>
         // Initialize web3 and MetaMask
@@ -139,10 +248,10 @@
 
             try {
                 await contract.methods.sellItem(itemId, priceInWei).send({ from: account });
-                document.getElementById('sellItemStatus').innerText = `Item ${itemId} listed for sale at ${itemPrice} ETH`;
+                document.getElementById('sellItemStatus').innerText = `Item ${itemId} is now for sale at ${itemPrice} Ether.`;
             } catch (error) {
                 console.error(error);
-                document.getElementById('sellItemStatus').innerText = 'Error selling item!';
+                document.getElementById('sellItemStatus').innerText = `Error selling item: ${error.message}`;
             }
         }
 
@@ -154,30 +263,20 @@
             const account = accounts[0];
 
             try {
-                // Get the price of the item from the contract
-                const priceInWei = await contract.methods.itemStorage(itemId).call().then(item => item.price);
+                const itemDetails = await contract.methods.itemStorage(itemId).call();
+                const itemPrice = itemDetails.price;
 
-                // Send the exact amount of Ether to buy the item
-                await contract.methods.buyItem(itemId).send({ from: account, value: priceInWei });
+                await contract.methods.buyItem(itemId).send({
+                    from: account,
+                    value: itemPrice
+                });
 
-                document.getElementById('buyItemStatus').innerText = `Item ${itemId} bought successfully!`;
+                document.getElementById('buyItemStatus').innerText = `You have successfully bought item ${itemId}!`;
             } catch (error) {
                 console.error(error);
-                document.getElementById('buyItemStatus').innerText = 'Error buying item!';
-            }
-        }
-
-        // Get the current block number
-        async function getCurrentBlockNumber() {
-            try {
-                const blockNumber = await web3.eth.getBlockNumber();
-                document.getElementById('blockNumberStatus').innerText = `Current Block Number: ${blockNumber}`;
-            } catch (error) {
-                console.error(error);
-                document.getElementById('blockNumberStatus').innerText = 'Error fetching block number!';
+                document.getElementById('buyItemStatus').innerText = `Error buying item: ${error.message}`;
             }
         }
     </script>
-
 </body>
 </html>
