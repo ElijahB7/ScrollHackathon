@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Marketplace</title>
+    <script src="https://cdn.jsdelivr.net/gh/ethereum/web3.js@1.6.0/dist/web3.min.js"></script>
+</head>
+<body>
+
+    <h1>Simple Marketplace</h1>
+
+    <!-- Section to create an item -->
+    <h2>Create an Item</h2>
+    <label>Item ID:</label>
+    <input type="text" id="itemId">
+    <label>Item Name:</label>
+    <input type="text" id="itemName">
+    <button onclick="createItem()">Create Item</button>
+    <p id="createItemStatus"></p>
+
+    <!-- Section to sell an item -->
+    <h2>Sell an Item</h2>
+    <label>Item ID:</label>
+    <input type="text" id="sellItemId">
+    <label>Price (in Ether):</label>
+    <input type="text" id="itemPrice">
+    <button onclick="sellItem()">Sell Item</button>
+    <p id="sellItemStatus"></p>
+
+    <!-- Section to buy an item -->
+    <h2>Buy an Item</h2>
+    <label>Item ID:</label>
+    <input type="text" id="buyItemId">
+    <button onclick="buyItem()">Buy Item</button>
+    <p id="buyItemStatus"></p>
+
+    <!-- Section to get current block number -->
+    <h2>Current Block Number</h2>
+    <button onclick="getCurrentBlockNumber()">Get Current Block Number</button>
+    <p id="blockNumberStatus"></p>
+
+    <script>
+        // Initialize web3 and MetaMask
+        let web3;
+        let contract;
+
+        const CONTRACT_ADDRESS = '0xf216cc3144Bc205CaE44642fdd650d01A1D3d178';  // Replace with your contract's deployed address
+        const CONTRACT_ABI = [
+            {
+                "inputs": [{"internalType": "uint256", "name": "_itemId", "type": "uint256"}],
+                "name": "buyItem",
+                "outputs": [],
+                "stateMutability": "payable",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "uint256", "name": "_itemId", "type": "uint256"}, {"internalType": "string", "name": "_itemName", "type": "string"}],
+                "name": "createItem",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            },
+            {
+                "inputs": [],
+                "name": "itemCounter",
+                "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+                "name": "itemStorage",
+                "outputs": [
+                    {"internalType": "uint256", "name": "itemId", "type": "uint256"},
+                    {"internalType": "string", "name": "itemName", "type": "string"},
+                    {"internalType": "bool", "name": "saleId", "type": "bool"},
+                    {"internalType": "address", "name": "seller", "type": "address"},
+                    {"internalType": "uint256", "name": "price", "type": "uint256"}
+                ],
+                "stateMutability": "view",
+                "type": "function"
+            },
+            {
+                "inputs": [{"internalType": "uint256", "name": "_itemId", "type": "uint256"}, {"internalType": "uint256", "name": "_price", "type": "uint256"}],
+                "name": "sellItem",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+            }
+        ];  // Replace with your contract's ABI
+
+        // Load web3 and connect to MetaMask
+        window.addEventListener('load', async () => {
+            if (typeof window.ethereum !== 'undefined') {
+                // Request account access if needed
+                await ethereum.request({ method: 'eth_requestAccounts' });
+
+                // Instantiate web3 with MetaMask's provider
+                web3 = new Web3(window.ethereum);
+                // Load the smart contract
+                contract = new web3.eth.Contract(CONTRACT_ABI, CONTRACT_ADDRESS);
+                console.log("Web3 and contract initialized");
+            } else {
+                alert("Please install MetaMask!");
+            }
+        });
+
+        // Create an item
+        async function createItem() {
+            const itemId = document.getElementById('itemId').value;
+            const itemName = document.getElementById('itemName').value;
+
+            try {
+                const accounts = await web3.eth.getAccounts();
+                if (accounts.length === 0) {
+                    throw new Error('No accounts found. Make sure you are logged into MetaMask.');
+                }
+                const account = accounts[0]; // Use the first account
+
+                await contract.methods.createItem(itemId, itemName).send({ from: account });
+                document.getElementById('createItemStatus').innerText = `Item ${itemName} created successfully!`;
+            } catch (error) {
+                console.error(error);
+                document.getElementById('createItemStatus').innerText = `Error creating item: ${error.message}`;
+            }
+        }
+
+        // Sell an item
+        async function sellItem() {
+            const itemId = document.getElementById('sellItemId').value;
+            const itemPrice = document.getElementById('itemPrice').value;
+
+            const accounts = await web3.eth.getAccounts();
+            const account = accounts[0];
+
+            // Convert price to Wei (1 Ether = 10^18 Wei)
+            const priceInWei = web3.utils.toWei(itemPrice, 'ether');
+
+            try {
+                await contract.methods.sellItem(itemId, priceInWei).send({ from: account });
+                document.getElementById('sellItemStatus').innerText = `Item ${itemId} listed for sale at ${itemPrice} ETH`;
+            } catch (error) {
+                console.error(error);
+                document.getElementById('sellItemStatus').innerText = 'Error selling item!';
+            }
+        }
+
+        // Buy an item
+        async function buyItem() {
+            const itemId = document.getElementById('buyItemId').value;
+
+            const accounts = await web3.eth.getAccounts();
+            const account = accounts[0];
+
+            try {
+                // Get the price of the item from the contract
+                const priceInWei = await contract.methods.itemStorage(itemId).call().then(item => item.price);
+
+                // Send the exact amount of Ether to buy the item
+                await contract.methods.buyItem(itemId).send({ from: account, value: priceInWei });
+
+                document.getElementById('buyItemStatus').innerText = `Item ${itemId} bought successfully!`;
+            } catch (error) {
+                console.error(error);
+                document.getElementById('buyItemStatus').innerText = 'Error buying item!';
+            }
+        }
+
+        // Get the current block number
+        async function getCurrentBlockNumber() {
+            try {
+                const blockNumber = await web3.eth.getBlockNumber();
+                document.getElementById('blockNumberStatus').innerText = `Current Block Number: ${blockNumber}`;
+            } catch (error) {
+                console.error(error);
+                document.getElementById('blockNumberStatus').innerText = 'Error fetching block number!';
+            }
+        }
+    </script>
+
+</body>
+</html>
